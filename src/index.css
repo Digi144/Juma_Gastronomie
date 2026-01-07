@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+@theme {
+  --color-juma-ivory: #FFFFF0;
+  --color-juma-schoenbrunn: #FFDD80;
+  --color-juma-gold: #A87B00;
+  --color-juma-emerald: #003324;
+
+  --font-poiret: "Poiret One", cursive;
+  --font-antonio: "Antonio", sans-serif;
+  --font-manrope: "Manrope", sans-serif;
+}
+
+:root {
+  font-family: var(--font-manrope);
+  background-color: var(--color-juma-ivory);
+  color: var(--color-juma-emerald);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-poiret);
+}
