@@ -849,8 +849,8 @@ function App() {
               </div>
             </div>
             
-            {/* Links - Zentriert */}
-            <div className="flex-1 flex justify-center">
+            {/* Links - Rechts */}
+            <div className="flex items-center md:items-start">
               <div className="flex space-x-8 sm:space-x-12 text-[10px] tracking-[0.3em] uppercase opacity-40 font-bold text-[#003324]">
                 <a href="#" className="hover:text-[#A87B00] transition-colors">Impressum</a>
                 <a href="#" className="hover:text-[#A87B00] transition-colors">Datenschutz</a>
