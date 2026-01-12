@@ -6,6 +6,8 @@ function App() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [parallaxOffset, setParallaxOffset] = useState(0);
+  const [targetParallaxOffset, setTargetParallaxOffset] = useState(0);
+  const [visibleCards, setVisibleCards] = useState<Set<number>>(new Set());
 
   const heroSlides = [
     "/images/02.jpg",
@@ -16,49 +18,56 @@ function App() {
   ];
 
   useEffect(() => {
-    let ticking = false;
+    let rafId: number | null = null;
     
     const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          setIsScrolled(window.scrollY > 50);
-          
-          // Parallax-Effekt für Problem & Lösung Sektion - Bild bewegt sich mit Scrollen
-          const problemSection = document.getElementById('loesungen');
-          if (problemSection) {
-            const rect = problemSection.getBoundingClientRect();
-            const scrollPosition = window.scrollY;
-            const viewportHeight = window.innerHeight;
-            const sectionTop = problemSection.offsetTop;
-            const sectionHeight = rect.height;
-            
-            // Berechne, wie weit die Sektion im Viewport ist
-            const scrollStart = sectionTop - viewportHeight;
-            const scrollEnd = sectionTop + sectionHeight;
-            
-            // Bild bewegt sich mit dem Scrollen - mehr Momentum für flüssigere Bewegung
-            if (scrollPosition >= scrollStart && scrollPosition <= scrollEnd) {
-              // Multipliziere mit höherem Wert für mehr Bewegung und flüssigeren Effekt
-              const offset = (scrollPosition - sectionTop) * 0.7; // Erhöht von 0.5 auf 0.7
-              setParallaxOffset(offset);
-            } else if (scrollPosition < scrollStart) {
-              setParallaxOffset(0);
-            } else {
-              setParallaxOffset((scrollEnd - sectionTop) * 0.7);
-            }
-          }
-          
-          ticking = false;
-        });
+      setIsScrolled(window.scrollY > 50);
+      
+      // Parallax-Effekt für Problem & Lösung Sektion - optimiert für Performance
+      const problemSection = document.getElementById('loesungen');
+      if (problemSection) {
+        const scrollPosition = window.scrollY;
+        const sectionTop = problemSection.offsetTop;
         
-        ticking = true;
+        // Berechne Ziel-Offset - sehr minimal (nur 15% der Scroll-Distanz)
+        const offset = (scrollPosition - sectionTop) * 0.15;
+        setTargetParallaxOffset(offset);
       }
     };
     
-    window.addEventListener('scroll', handleScroll, { passive: true });
+    const optimizedScroll = () => {
+      if (rafId === null) {
+        rafId = window.requestAnimationFrame(() => {
+          handleScroll();
+          rafId = null;
+        });
+      }
+    };
+    
+    window.addEventListener('scroll', optimizedScroll, { passive: true });
     handleScroll(); // Initial call
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', optimizedScroll);
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+      }
+    };
   }, []);
+
+  // Smooth easing für Parallax-Offset
+  useEffect(() => {
+    const smoothParallax = () => {
+      setParallaxOffset((prev) => {
+        const diff = targetParallaxOffset - prev;
+        // Ease-in-out mit Dämpfung für smooth movement
+        const easing = 0.15; // Je kleiner, desto smoother (0.1-0.2 ist optimal)
+        return prev + diff * easing;
+      });
+    };
+    
+    const interval = setInterval(smoothParallax, 16); // ~60fps
+    return () => clearInterval(interval);
+  }, [targetParallaxOffset]);
 
   // Slideshow Timer - Auto-rotate every 6 seconds
   useEffect(() => {
@@ -67,6 +76,27 @@ function App() {
     }, 6000);
     return () => clearInterval(timer);
   }, [heroSlides.length]);
+
+  // Intersection Observer für Leistungen-Cards - Streifen auf Mobile beim Scrollen ausfahren
+  useEffect(() => {
+    const cards = document.querySelectorAll('[data-leistung-card]');
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const index = parseInt(entry.target.getAttribute('data-card-index') || '0');
+          if (entry.isIntersecting) {
+            setVisibleCards((prev) => new Set([...prev, index]));
+          }
+        });
+      },
+      { threshold: 0.3 }
+    );
+
+    cards.forEach((card) => observer.observe(card));
+    return () => {
+      cards.forEach((card) => observer.unobserve(card));
+    };
+  }, []);
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
   const toggleFaq = (index: number) => {
@@ -99,7 +129,7 @@ function App() {
           </div>
 
           {/* Desktop Nav Links */}
-          <nav className="hidden xl:flex items-center gap-6 text-[10px] tracking-[0.2em] uppercase font-light opacity-80 text-[#003324]">
+          <nav className="hidden xl:flex items-center gap-6 text-[11.5px] tracking-[0.2em] uppercase font-light opacity-80 text-[#003324]">
             {navLinks.map((link) => (
               <a key={link.name} href={link.href} className="hover:font-bold hover:text-[#A87B00] transition-all duration-300 whitespace-nowrap">{link.name}</a>
             ))}
@@ -294,13 +324,15 @@ function App() {
         <div 
           className="absolute inset-0 z-0"
           style={{
-            transform: `translateY(${parallaxOffset}px)`,
+            transform: `translate3d(0, ${parallaxOffset}px, 0)`,
             willChange: 'transform',
-            transition: 'transform 0.05s ease-out'
+            backfaceVisibility: 'hidden',
+            perspective: '1000px',
+            transition: 'transform 0.1s cubic-bezier(0.4, 0, 0.2, 1)'
           }}
         >
           <img 
-            src="/images/AdobeStock_110382044.jpeg" 
+            src="/images/DSCF0059_optimized.webp" 
             alt="Luxury Hotel Lighting" 
             className="w-full h-[150%] object-cover"
           />
@@ -315,8 +347,9 @@ function App() {
             {/* Problem */}
             <div className="space-y-8">
               <h2 className="font-poiret text-4xl sm:text-5xl md:text-7xl lg:text-8xl leading-tight tracking-tighter text-white">
-                Standardlösungen werden <br />
-                <span className="text-[#FFDD80] italic">Ihrem Projekt nicht gerecht.</span>
+                <span className="whitespace-nowrap">Standardlösungen werden</span>
+                <br />
+                <span className="text-[#FFDD80] italic whitespace-nowrap">Ihrem Projekt nicht gerecht.</span>
               </h2>
               <p className="text-base sm:text-lg md:text-xl text-white/70 leading-relaxed font-light">
                 Viele Hotels und Restaurants greifen auf Standardbeleuchtung zurück, die weder die Atmosphäre noch die Individualität des Raumes widerspiegelt. Das Ergebnis: Räume, die austauschbar wirken statt einzigartig.
@@ -326,8 +359,9 @@ function App() {
             {/* Lösung */}
             <div className="space-y-8">
               <h2 className="font-poiret text-4xl sm:text-5xl md:text-7xl lg:text-8xl leading-tight tracking-tighter text-white">
-                Wo Ihre Vision <br />
-                <span className="text-[#FFDD80] italic">zu Licht wird.</span>
+                <span className="whitespace-nowrap">Wo Ihre Vision</span>
+                <br />
+                <span className="text-[#FFDD80] italic whitespace-nowrap">zu Licht wird.</span>
               </h2>
               <p className="text-base sm:text-lg md:text-xl text-white/70 leading-relaxed font-light">
                 Bei JUMA realisieren wir maßgeschneiderte Lichtkonzepte, die perfekt auf Ihr Projekt abgestimmt sind. Jede Leuchte wird individuell gefertigt – von der ersten Beratung bis zur finalen Montage. So entstehen Räume, die Ihre Gäste verzaubern.
@@ -413,8 +447,15 @@ function App() {
                 )
               }
             ].map((l, i) => (
-              <div key={i} className="group border border-white/10 p-8 md:p-10 hover:bg-white/5 transition-all duration-500 rounded-[2.5rem] flex flex-col h-full">
-                <div className="h-1 w-0 bg-[#FFDD80] group-hover:w-16 transition-all duration-700 mb-8 shrink-0"></div>
+              <div 
+                key={i} 
+                data-leistung-card
+                data-card-index={i}
+                className="group border border-white/10 p-8 md:p-10 hover:bg-white/5 transition-all duration-500 rounded-[2.5rem] flex flex-col h-full"
+              >
+                <div className={`h-1 bg-[#FFDD80] transition-all duration-700 mb-8 shrink-0 ${
+                  visibleCards.has(i) ? 'w-16 md:w-0 md:group-hover:w-16' : 'w-0 md:group-hover:w-16'
+                }`}></div>
                 <div className="flex items-center gap-4 mb-6">
                   <div className="text-[#FFDD80] group-hover:scale-110 transition-transform duration-300">
                     {l.icon}
@@ -475,7 +516,7 @@ function App() {
               href="#kontakt" 
               className="inline-block bg-[#003324] text-white px-10 md:px-14 py-4 md:py-5 rounded-full font-antonio uppercase tracking-[0.2em] text-sm md:text-base font-bold hover:bg-[#A87B00] hover:scale-[1.02] transition-all duration-300 shadow-xl"
             >
-              Referenzen ansehen & Projekt starten
+              Projekt starten
             </a>
           </div>
         </div>
@@ -623,7 +664,7 @@ function App() {
       <section id="faq" className="py-24 md:py-40 bg-[#FFFFF0]">
         <div className="container mx-auto px-6 md:px-10">
           <div className="max-w-4xl mx-auto">
-            <div className="mb-16 md:mb-24">
+            <div className="mb-16 md:mb-24 text-center">
               <h2 className="font-poiret text-4xl sm:text-5xl md:text-7xl lg:text-8xl tracking-tighter text-[#003324] mb-10">
                 Häufige Fragen
               </h2>
@@ -786,11 +827,35 @@ function App() {
 
       {/* 11. Footer */}
       <footer className="py-16 bg-[#FFFFF0] border-t border-[#003324]/5">
-        <div className="container mx-auto px-6 md:px-10 flex flex-col md:flex-row justify-between items-center text-[10px] tracking-[0.3em] uppercase opacity-40 font-bold text-[#003324]">
-          <div className="text-center md:text-left mb-8 md:mb-0">© 2026 JUMA Manufacturing Vienna. <br className="md:hidden" /> Handgefertigt seit 1967.</div>
-          <div className="flex space-x-8 sm:space-x-12">
-            <a href="#" className="hover:text-[#A87B00] transition-colors">Impressum</a>
-            <a href="#" className="hover:text-[#A87B00] transition-colors">Datenschutz</a>
+        <div className="container mx-auto px-6 md:px-10">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+            {/* Logo & Handgefertigt - Links */}
+            <div className="flex flex-col items-center md:items-start gap-3">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center justify-center h-8 md:h-10">
+                  <img src="/assets/brand/Monogram.webp" alt="JUMA Monogram" className="h-full object-contain opacity-40" />
+                </div>
+                <div className="h-6 md:h-8">
+                  <img 
+                    src="/assets/brand/Wordmark.webp" 
+                    alt="JUMA" 
+                    className="h-full object-contain opacity-40"
+                    style={{ filter: 'brightness(0) saturate(100%) invert(12%) sepia(34%) saturate(1204%) hue-rotate(116deg) brightness(95%) contrast(101%)' }}
+                  />
+                </div>
+              </div>
+              <div className="text-[10px] tracking-[0.3em] uppercase opacity-40 font-bold text-[#003324]">
+                Handgefertigt seit 1967.
+              </div>
+            </div>
+            
+            {/* Links - Zentriert */}
+            <div className="flex-1 flex justify-center">
+              <div className="flex space-x-8 sm:space-x-12 text-[10px] tracking-[0.3em] uppercase opacity-40 font-bold text-[#003324]">
+                <a href="#" className="hover:text-[#A87B00] transition-colors">Impressum</a>
+                <a href="#" className="hover:text-[#A87B00] transition-colors">Datenschutz</a>
+              </div>
+            </div>
           </div>
         </div>
       </footer>
