@@ -649,11 +649,11 @@ function App() {
                   />
                 </div>
                 <div className="rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl translate-y-8 sm:translate-y-12">
-                  <img src="/images/Mohammad Juma_optimized.webp" alt="Mohammad Juma" className="w-full h-full object-cover" />
+                  <img src={encodeURI("/images/Mohammad Juma_optimized.webp")} alt="Mohammad Juma" className="w-full h-full object-cover" />
                 </div>
               </div>
               <div className="rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl">
-                <img src="/images/Altes Geschäft.webp" alt="Juma Historisches Geschäft" className="w-full h-full object-cover" />
+                <img src={encodeURI("/images/Altes Geschäft.webp")} alt="Juma Historisches Geschäft" className="w-full h-full object-cover" />
               </div>
             </div>
           </div>
