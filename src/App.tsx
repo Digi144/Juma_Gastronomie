@@ -35,10 +35,6 @@ function App() {
             // Berechne, wie weit die Sektion im Viewport ist
             const scrollStart = sectionTop - viewportHeight;
             const scrollEnd = sectionTop + sectionHeight;
-            const scrollRange = scrollEnd - scrollStart;
-            
-            // Berechne den Fortschritt (0 = Sektion beginnt, 1 = Sektion endet)
-            const scrollProgress = (scrollPosition - scrollStart) / scrollRange;
             
             // Bild bewegt sich mit dem Scrollen - mehr Momentum für flüssigere Bewegung
             if (scrollPosition >= scrollStart && scrollPosition <= scrollEnd) {
@@ -71,9 +67,6 @@ function App() {
     }, 6000);
     return () => clearInterval(timer);
   }, [heroSlides.length]);
-
-  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
-  const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
   const toggleFaq = (index: number) => {
@@ -365,8 +358,8 @@ function App() {
         </div>
         
         <div className="container mx-auto px-6 md:px-10 relative z-10">
-          <div className="flex flex-col lg:flex-row justify-between items-end mb-24 md:mb-32 gap-10">
-            <h2 className="font-poiret text-4xl sm:text-5xl md:text-8xl tracking-tighter leading-none">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-24 md:mb-32 gap-10">
+            <h2 className="font-poiret text-4xl sm:text-5xl md:text-8xl tracking-tighter leading-none text-left">
               Ihr Partner für <br />
               <span className="text-[#FFDD80] italic">exzellente Gastlichkeit.</span>
             </h2>
@@ -502,7 +495,7 @@ function App() {
       {/* 7. PROZESS */}
       <section id="prozess" className="py-24 md:py-40 bg-[#FFFFF0]">
         <div className="container mx-auto px-6 md:px-10">
-          <div className="max-w-5xl mx-auto mb-16 md:mb-24">
+          <div className="mb-16 md:mb-24">
             <h2 className="font-poiret text-4xl sm:text-5xl md:text-7xl lg:text-8xl tracking-tighter text-[#003324] mb-10">
               Von der Vision <br />
               <span className="text-[#A87B00] italic">zur Realität.</span>
