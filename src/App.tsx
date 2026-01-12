@@ -4,6 +4,8 @@ function App() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+  const [parallaxOffset, setParallaxOffset] = useState(0);
 
   const heroSlides = [
     "/images/02.jpg",
@@ -14,16 +16,59 @@ function App() {
   ];
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 50);
-    window.addEventListener('scroll', handleScroll);
+    let ticking = false;
+    
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setIsScrolled(window.scrollY > 50);
+          
+          // Parallax-Effekt für Problem & Lösung Sektion - Bild bewegt sich mit Scrollen
+          const problemSection = document.getElementById('loesungen');
+          if (problemSection) {
+            const rect = problemSection.getBoundingClientRect();
+            const scrollPosition = window.scrollY;
+            const viewportHeight = window.innerHeight;
+            const sectionTop = problemSection.offsetTop;
+            const sectionHeight = rect.height;
+            
+            // Berechne, wie weit die Sektion im Viewport ist
+            const scrollStart = sectionTop - viewportHeight;
+            const scrollEnd = sectionTop + sectionHeight;
+            const scrollRange = scrollEnd - scrollStart;
+            
+            // Berechne den Fortschritt (0 = Sektion beginnt, 1 = Sektion endet)
+            const scrollProgress = (scrollPosition - scrollStart) / scrollRange;
+            
+            // Bild bewegt sich mit dem Scrollen - mehr Momentum für flüssigere Bewegung
+            if (scrollPosition >= scrollStart && scrollPosition <= scrollEnd) {
+              // Multipliziere mit höherem Wert für mehr Bewegung und flüssigeren Effekt
+              const offset = (scrollPosition - sectionTop) * 0.7; // Erhöht von 0.5 auf 0.7
+              setParallaxOffset(offset);
+            } else if (scrollPosition < scrollStart) {
+              setParallaxOffset(0);
+            } else {
+              setParallaxOffset((scrollEnd - sectionTop) * 0.7);
+            }
+          }
+          
+          ticking = false;
+        });
+        
+        ticking = true;
+      }
+    };
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll(); // Initial call
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Slideshow Timer
+  // Slideshow Timer - Auto-rotate every 6 seconds
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
-    }, 4000);
+    }, 6000);
     return () => clearInterval(timer);
   }, [heroSlides.length]);
 
@@ -31,6 +76,9 @@ function App() {
   const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
+  const toggleFaq = (index: number) => {
+    setOpenFaqIndex(openFaqIndex === index ? null : index);
+  };
 
   const navLinks = [
     { name: 'Ambiente', href: '#ambiente' },
@@ -38,6 +86,7 @@ function App() {
     { name: 'Leistungen', href: '#leistungen' },
     { name: 'Referenzen', href: '#referenzen' },
     { name: 'Über Juma', href: '#ueber-juma' },
+    { name: 'FAQ', href: '#faq' },
   ];
 
   return (
@@ -48,8 +97,8 @@ function App() {
         <div className="container mx-auto px-6 md:px-10 flex justify-between items-center">
           {/* Monogram & Text Logo */}
           <div className="flex items-center space-x-4 md:space-x-6 relative z-[60]">
-            <div className="bg-white/40 backdrop-blur-xl border border-white/60 rounded-2xl p-2 md:p-3 shadow-xl flex items-center justify-center w-12 h-12 md:w-16 md:h-16">
-               <img src="/assets/brand/Monogram.webp" alt="JUMA Monogram" className="w-full h-full object-contain" />
+            <div className="flex items-center justify-center h-8 md:h-10">
+               <img src="/assets/brand/Monogram.webp" alt="JUMA Monogram" className="h-full object-contain" />
             </div>
             <div className="h-8 md:h-10">
               <img src="/assets/brand/Wordmark.webp" alt="JUMA" className="h-full object-contain" style={{ filter: 'brightness(0) saturate(100%) invert(12%) sepia(34%) saturate(1204%) hue-rotate(116deg) brightness(95%) contrast(101%)' }} />
@@ -57,11 +106,11 @@ function App() {
           </div>
 
           {/* Desktop Nav Links */}
-          <nav className="hidden xl:flex items-center space-x-8 text-[10px] tracking-[0.2em] uppercase font-light opacity-80 text-[#003324]">
+          <nav className="hidden xl:flex items-center gap-6 text-[10px] tracking-[0.2em] uppercase font-light opacity-80 text-[#003324]">
             {navLinks.map((link) => (
-              <a key={link.name} href={link.href} className="hover:font-bold hover:text-[#A87B00] transition-all duration-300 w-[100px] text-center">{link.name}</a>
+              <a key={link.name} href={link.href} className="hover:font-bold hover:text-[#A87B00] transition-all duration-300 whitespace-nowrap">{link.name}</a>
             ))}
-            <a href="#kontakt" className="bg-[#A87B00] text-white px-6 py-2 rounded-full font-bold hover:bg-[#003324] transition-all shadow-md">Kontakt</a>
+            <a href="#kontakt" className="bg-[#A87B00] text-white px-6 py-2 rounded-full font-bold hover:bg-[#003324] transition-all shadow-md ml-2">Kontakt</a>
           </nav>
 
           {/* Animated Burger Menu Button */}
@@ -100,129 +149,221 @@ function App() {
         </div>
       </header>
 
-      {/* 2. Hero Section with Slideshow */}
-      <section className="relative h-[85vh] flex items-center justify-center p-4 md:p-6 lg:p-10 mt-20 md:mt-24">
-        <div className="relative w-full h-full rounded-[3rem] md:rounded-[5rem] overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,51,36,0.15)] border border-white/40">
-          
-          {/* Slideshow Images */}
-          {heroSlides.map((slide, index) => (
-            <div 
-              key={index}
-              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100' : 'opacity-0'}`}
-            >
-              <img 
-                src={slide} 
-                alt={`JUMA Slide ${index + 1}`} 
-                className="w-full h-full object-cover brightness-[0.95] contrast-[1.05]"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-white/10"></div>
+      {/* 2. Hero Section with Split Layout: Text Left, Slideshow Right */}
+      <section className="relative min-h-[85vh] flex items-center p-4 md:p-6 lg:p-10 mt-20 md:mt-24">
+        <div className="container mx-auto w-full">
+          <div className="grid lg:grid-cols-[52%_48%] gap-8 lg:gap-12 items-center">
+            
+            {/* Left Side: Hero Text & CTA (52%) */}
+            <div className="space-y-8 md:space-y-10 lg:pl-8 xl:pl-16">
+              {/* H1 - Main Headline */}
+              <h1 className="font-poiret text-4xl sm:text-5xl md:text-6xl lg:text-[64px] leading-[1.2] tracking-tight">
+                <span className="text-[#003324]">Das perfekte Licht</span>
+                <br />
+                <span className="text-[#A87B00] text-5xl sm:text-6xl md:text-7xl lg:text-[72px]">für Ihr Ambiente.</span>
+              </h1>
+              
+              {/* Subheadline */}
+              <p className="text-base sm:text-lg md:text-xl lg:text-[22px] text-[#2C2C2C] leading-[1.7] font-light max-w-[500px]">
+                Exklusive Lichtkonzepte, die Ihre Gäste verzaubern. Von der ersten Beratung bis zur finalen Montage – wir realisieren die Beleuchtung, die Ihr Hotel oder Restaurant einzigartig macht.
+              </p>
+              
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5 pt-4 md:pt-6">
+                <a 
+                  href="#kontakt" 
+                  className="bg-[#003324] text-white px-8 md:px-10 py-3 md:py-4 rounded-full font-antonio uppercase tracking-[0.2em] text-sm md:text-base font-bold hover:bg-[#003324]/90 hover:scale-[1.02] transition-all duration-300 shadow-lg cursor-pointer"
+                >
+                  PROJEKTANFRAGE STARTEN
+                </a>
+                <a 
+                  href="#loesungen" 
+                  className="border-2 border-[#003324] text-[#003324] px-8 md:px-10 py-3 md:py-4 rounded-full font-antonio uppercase tracking-[0.2em] text-sm md:text-base font-bold hover:bg-[#003324]/10 transition-all duration-300 cursor-pointer"
+                >
+                  Mehr erfahren
+                </a>
+              </div>
             </div>
-          ))}
 
-          {/* Premium Glassmorphism Arrows */}
-          <button 
-            onClick={prevSlide}
-            className="absolute left-8 top-1/2 -translate-y-1/2 z-20 w-12 h-12 md:w-16 md:h-16 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:scale-110 transition-all duration-500 shadow-2xl group"
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="transition-transform group-hover:-translate-x-1"><path d="M15 18l-6-6 6-6"/></svg>
-          </button>
-          
-          <button 
-            onClick={nextSlide}
-            className="absolute right-8 top-1/2 -translate-y-1/2 z-20 w-12 h-12 md:w-16 md:h-16 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:scale-110 transition-all duration-500 shadow-2xl group"
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="transition-transform group-hover:translate-x-1"><path d="M9 18l6-6-6-6"/></svg>
-          </button>
+            {/* Right Side: Vertical Slideshow (48%) */}
+            <div className="relative h-[500px] md:h-[600px] lg:h-[700px] xl:h-[750px] rounded-2xl md:rounded-3xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.1)]">
+              {/* Slideshow Images */}
+              {heroSlides.map((slide, index) => (
+                <div 
+                  key={index}
+                  className={`absolute inset-0 transition-opacity duration-500 ease-in-out ${index === currentSlide ? 'opacity-100' : 'opacity-0'}`}
+                >
+                  <img 
+                    src={slide} 
+                    alt={`JUMA Slide ${index + 1}`} 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ))}
 
-          {/* Premium Dark Glassmorphism CTA - Centered on top of the hero image */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex justify-center">
+              {/* Slider Indicators - Dots */}
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+                {heroSlides.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentSlide(index)}
+                    className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                      index === currentSlide 
+                        ? 'bg-[#A87B00] w-8' 
+                        : 'bg-white/50 hover:bg-white/80'
+                    }`}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* JUMA Divider - Zwischen Hero und 2. Sektion */}
+      <div className="py-12 md:py-16 bg-[#FFFFF0]">
+        <div className="container mx-auto px-6">
+          <img 
+            src="/images/Juma_divider.webp" 
+            alt="JUMA Divider" 
+            className="w-full h-auto max-h-24 md:max-h-32 object-contain"
+          />
+        </div>
+      </div>
+
+      {/* 3. Unsere Lösungen für Ihre Gastlichkeit */}
+      <section id="ambiente" className="py-24 md:py-32 lg:py-40 bg-[#FFFFF0]">
+        <div className="container mx-auto px-6 md:px-10">
+          <div className="max-w-5xl mx-auto mb-16 md:mb-24">
+            <div className="inline-block bg-[#FFDD80]/20 px-6 py-2 rounded-full border border-[#FFDD80]/40 text-[#A87B00] text-[10px] tracking-[0.3em] uppercase font-bold mb-8">
+              Unsere Lösungen für Ihre Gastlichkeit
+            </div>
+            <h2 className="font-poiret text-4xl sm:text-5xl md:text-7xl lg:text-8xl leading-tight tracking-tighter text-[#003324] mb-10">
+              Wo Ambiente <br />
+              <span className="text-[#A87B00] italic">zum Erlebnis wird.</span>
+            </h2>
+            <p className="text-base sm:text-lg md:text-xl text-[#003324]/80 leading-relaxed font-light max-w-3xl">
+              Wir bei JUMA verstehen uns nicht nur als Hersteller, sondern als Partner für Hoteliers und Gastronomen. Jede Leuchte wird individuell für Ihr Projekt gefertigt – von der ersten Skizze bis zur finalen Montage.
+            </p>
+          </div>
+
+          {/* Feature Cards with Icons */}
+          <div className="grid md:grid-cols-3 gap-8 lg:gap-10 mb-12 md:mb-16">
+            {[
+              { 
+                number: "01",
+                title: "Maximale Individualität", 
+                text: "Jede Leuchte ein Unikat, gefertigt nach Ihren Entwürfen und Maßen. Keine Standardlösungen – nur maßgeschneiderte Perfektion.",
+                icon: "✨"
+              },
+              { 
+                number: "02",
+                title: "Absolute Zuverlässigkeit", 
+                text: "Als Familienunternehmen in dritter Generation stehen wir für Termintreue und höchste Qualität in jedem Projekt.",
+                icon: "✓"
+              },
+              { 
+                number: "03",
+                title: "Ganzheitlicher Service", 
+                text: "Von der Planung bis zur Montage – ein kompetenter Ansprechpartner für alle Phasen Ihres Projekts.",
+                icon: "🤝"
+              }
+            ].map((feature, i) => (
+              <div key={i} className="bg-white/50 backdrop-blur-xl border border-white/60 p-8 sm:p-10 lg:p-12 rounded-[2.5rem] md:rounded-[3rem] shadow-xl hover:translate-y-[-10px] transition-all duration-500 flex flex-col items-center text-center group">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[#003324] rounded-full flex items-center justify-center text-white text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 shadow-lg group-hover:scale-110 transition-transform">
+                  {feature.number}
+                </div>
+                <h3 className="text-xl sm:text-2xl font-antonio uppercase tracking-wider mb-4 sm:mb-6 text-[#003324]">{feature.title}</h3>
+                <p className="text-sm sm:text-base text-[#003324]/70 leading-relaxed">{feature.text}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Secondary CTA */}
+          <div className="text-center">
             <a 
-              href="#kontakt" 
-              className="bg-[#003324]/20 backdrop-blur-2xl border border-white/20 px-10 md:px-14 py-4 md:py-5 rounded-full flex items-center space-x-4 md:space-x-6 hover:bg-[#003324]/40 hover:scale-105 transition-all duration-500 shadow-[0_25px_50px_rgba(0,0,0,0.5)] group/cta scale-90 md:scale-100"
+              href="#leistungen" 
+              className="inline-flex items-center space-x-4 bg-[#003324] text-white px-8 md:px-10 py-3 md:py-4 rounded-full font-antonio uppercase tracking-[0.2em] text-sm md:text-base font-bold hover:bg-[#003324]/90 hover:scale-[1.02] transition-all duration-300 shadow-lg group"
             >
-              <span className="text-xs md:text-sm lg:text-base font-antonio tracking-[0.3em] uppercase font-bold text-white group-hover/cta:text-[#FFDD80] transition-colors">
-                Anfrage starten
-              </span>
-              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center group-hover/cta:bg-[#A87B00] group-hover/cta:border-[#A87B00] transition-all duration-500">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-white transition-transform group-hover/cta:translate-x-1"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              <span>Unsere Leistungen entdecken</span>
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-all">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
               </div>
             </a>
           </div>
         </div>
       </section>
 
-      {/* 3. AMBIENTE */}
-      <section id="ambiente" className="py-24 md:py-40 bg-[#FFFFF0]">
-        <div className="container mx-auto px-6 md:px-10">
-          <div className="grid lg:grid-cols-2 gap-24 items-center">
-            <div className="space-y-10 animate-slide-up">
-              <div className="inline-block bg-[#FFDD80]/20 px-6 py-2 rounded-full border border-[#FFDD80]/40 text-[#A87B00] text-[10px] tracking-[0.3em] uppercase font-bold">
-                Das Ambiente
-              </div>
-              <h2 className="font-poiret text-4xl sm:text-5xl md:text-7xl lg:text-8xl leading-tight tracking-tighter text-[#003324]">
-                Exklusive Lichtkonzepte <br />
-                <span className="text-[#A87B00] italic">für die Hotellerie.</span>
-              </h2>
-              <p className="text-base sm:text-lg md:text-xl text-[#003324]/80 leading-relaxed font-light">
-                Seit 1967 realisieren wir als Wiener Traditionsmanufaktur einzigartige Beleuchtungslösungen, die Ihr Hotel oder Restaurant perfekt ergänzen. Von der ersten Skizze bis zur finalen Montage.
-              </p>
-              
-              <div className="flex flex-col sm:flex-row items-center gap-6 mt-12">
-                <a href="#kontakt" className="bg-[#003324] text-white px-10 py-4 rounded-full font-antonio uppercase tracking-widest hover:bg-[#A87B00] transition-all shadow-xl w-full sm:w-auto text-center">
-                  Projektanfrage starten
-                </a>
-                <a href="#loesungen" className="text-[#003324] font-bold tracking-widest uppercase text-xs flex items-center space-x-4 group">
-                  <span>Unsere Lösungen entdecken</span>
-                  <div className="w-8 h-8 rounded-full border border-[#003324]/20 flex items-center justify-center group-hover:bg-[#A87B00] group-hover:text-white transition-all">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                  </div>
-                </a>
-              </div>
-            </div>
-            
-            <div className="relative rounded-[3rem] overflow-hidden shadow-2xl group">
-              <img 
-                src="/images/AdobeStock_76716834.webp" 
-                alt="Elegantes Hotel Ambiente" 
-                className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-[#003324]/5 mix-blend-overlay"></div>
-            </div>
-          </div>
+      {/* 4. Problem & Lösung */}
+      <section id="loesungen" className="relative py-24 md:py-40 text-white overflow-hidden">
+        {/* Parallax Background Image - bewegt sich mit Scrollen */}
+        <div 
+          className="absolute inset-0 z-0"
+          style={{
+            transform: `translateY(${parallaxOffset}px)`,
+            willChange: 'transform',
+            transition: 'transform 0.05s ease-out'
+          }}
+        >
+          <img 
+            src="/images/AdobeStock_110382044.jpeg" 
+            alt="Luxury Hotel Lighting" 
+            className="w-full h-[150%] object-cover"
+          />
         </div>
-      </section>
+        
+        {/* Darker Overlay for Text Readability */}
+        <div className="absolute inset-0 bg-[#2C2C2C]/85 z-[1]"></div>
+        
+        {/* Content */}
+        <div className="container mx-auto px-6 md:px-10 relative z-[2]">
+          <div className="max-w-4xl mx-auto space-y-16 md:space-y-24">
+            {/* Problem */}
+            <div className="space-y-8">
+              <h2 className="font-poiret text-4xl sm:text-5xl md:text-7xl lg:text-8xl leading-tight tracking-tighter text-white">
+                Standardlösungen werden <br />
+                <span className="text-[#FFDD80] italic">Ihrem Projekt nicht gerecht.</span>
+              </h2>
+              <p className="text-base sm:text-lg md:text-xl text-white/70 leading-relaxed font-light">
+                Viele Hotels und Restaurants greifen auf Standardbeleuchtung zurück, die weder die Atmosphäre noch die Individualität des Raumes widerspiegelt. Das Ergebnis: Räume, die austauschbar wirken statt einzigartig.
+              </p>
+            </div>
 
-      {/* 4. LÖSUNGEN */}
-      <section id="loesungen" className="py-24 md:py-40 bg-[#F5F2ED]">
-        <div className="container mx-auto px-6 md:px-10">
-          <div className="max-w-5xl mx-auto text-center mb-24 md:mb-32">
-            <h2 className="font-poiret text-4xl sm:text-5xl md:text-8xl tracking-tighter mb-10 text-[#003324]">
-              JUMA: Wo Ihr Ambiente <br />
-              <span className="text-[#A87B00] italic">zum Erlebnis wird.</span>
-            </h2>
-            <p className="text-lg sm:text-xl md:text-2xl text-[#003324]/80 leading-relaxed font-light">
-              Wir bei JUMA verstehen uns nicht nur als Hersteller, sondern als Partner für Hoteliers und Gastronomen.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8 lg:gap-10">
-            {[
-              { title: "Maximale Individualität", text: "Jede Leuchte ein Unikat, gefertigt nach Ihren Entwürfen und Maßen." },
-              { title: "Absolute Zuverlässigkeit", text: "Als Familienunternehmen in dritter Generation stehen wir für Termintreue." },
-              { title: "Ganzheitlicher Service", text: "Von der Planung bis zur Montage – ein kompetenter Ansprechpartner." }
-            ].map((v, i) => (
-              <div key={i} className="bg-white/50 backdrop-blur-xl border border-white/60 p-8 sm:p-10 lg:p-12 rounded-[2.5rem] md:rounded-[3rem] shadow-xl hover:translate-y-[-10px] transition-all duration-500 flex flex-col items-center text-center">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-[#A87B00] rounded-full flex items-center justify-center text-white text-xl sm:text-2xl font-bold mb-6 sm:mb-8 shadow-lg">0{i+1}</div>
-                <h3 className="text-xl sm:text-2xl font-antonio uppercase tracking-wider mb-4 sm:mb-6 text-[#003324]">{v.title}</h3>
-                <p className="text-sm sm:text-base text-[#003324]/70 leading-relaxed">{v.text}</p>
+            {/* Lösung */}
+            <div className="space-y-8">
+              <h2 className="font-poiret text-4xl sm:text-5xl md:text-7xl lg:text-8xl leading-tight tracking-tighter text-white">
+                Wo Ihre Vision <br />
+                <span className="text-[#FFDD80] italic">zu Licht wird.</span>
+              </h2>
+              <p className="text-base sm:text-lg md:text-xl text-white/70 leading-relaxed font-light">
+                Bei JUMA realisieren wir maßgeschneiderte Lichtkonzepte, die perfekt auf Ihr Projekt abgestimmt sind. Jede Leuchte wird individuell gefertigt – von der ersten Beratung bis zur finalen Montage. So entstehen Räume, die Ihre Gäste verzaubern.
+              </p>
+              <div className="pt-6">
+                <a 
+                  href="#kontakt" 
+                  className="inline-block bg-[#A87B00] text-white px-8 md:px-10 py-3 md:py-4 rounded-full font-antonio uppercase tracking-[0.2em] text-sm md:text-base font-bold hover:bg-[#FFDD80] hover:text-[#003324] hover:scale-[1.02] transition-all duration-300 shadow-lg"
+                >
+                  Jetzt Projekt starten
+                </a>
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </section>
 
       {/* 5. LEISTUNGEN */}
       <section id="leistungen" className="py-24 md:py-40 bg-[#003324] text-white overflow-hidden relative">
+        {/* Schräger Divider oben in Grün */}
+        <div className="absolute top-0 left-0 w-full h-24 md:h-32 z-0">
+          <div 
+            className="w-full h-full bg-[#003324]"
+            style={{
+              clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 80%)'
+            }}
+          ></div>
+        </div>
+        
         <div className="container mx-auto px-6 md:px-10 relative z-10">
           <div className="flex flex-col lg:flex-row justify-between items-end mb-24 md:mb-32 gap-10">
             <h2 className="font-poiret text-4xl sm:text-5xl md:text-8xl tracking-tighter leading-none">
@@ -236,21 +377,74 @@ function App() {
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
             {[
-              { title: "Technische Beratung", text: "Lichtberechnungen und Materialmuster für die perfekte Integration." },
-              { title: "Design & Sonderbau", text: "Adaption klassischer Designs oder komplette Neuentwicklungen." },
-              { title: "Projektmanagement", text: "Weltweite Koordination, Lieferung und fachgerechte Montage." },
-              { title: "Restauration", text: "Denkmalgerechte Instandsetzung oder LED-Modernisierung." }
+              { 
+                title: "Technische Beratung", 
+                text: "Lichtberechnungen und Materialmuster für die perfekte Integration.",
+                icon: (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="20" x2="12" y2="10"></line>
+                    <line x1="18" y1="20" x2="18" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="16"></line>
+                  </svg>
+                )
+              },
+              { 
+                title: "Design & Sonderbau", 
+                text: "Adaption klassischer Designs oder komplette Neuentwicklungen.",
+                icon: (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                    <path d="M2 17l10 5 10-5"></path>
+                    <path d="M2 12l10 5 10-5"></path>
+                  </svg>
+                )
+              },
+              { 
+                title: "Projektmanagement", 
+                text: "Weltweite Koordination, Lieferung und fachgerechte Montage.",
+                icon: (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="6" x2="12" y2="12"></line>
+                    <line x1="16" y1="10" x2="12" y2="12"></line>
+                  </svg>
+                )
+              },
+              { 
+                title: "Restauration", 
+                text: "Denkmalgerechte Instandsetzung oder LED-Modernisierung.",
+                icon: (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                  </svg>
+                )
+              }
             ].map((l, i) => (
               <div key={i} className="group border border-white/10 p-8 md:p-10 hover:bg-white/5 transition-all duration-500 rounded-[2.5rem] flex flex-col h-full">
-                <div className="h-1 w-0 bg-[#FFDD80] group-hover:w-full transition-all duration-700 mb-8 shrink-0"></div>
-                <h4 className="text-base sm:text-lg md:text-xl font-antonio uppercase tracking-wider mb-6 group-hover:text-[#FFDD80] transition-colors leading-tight break-words min-h-[3rem] flex items-center">
-                  {l.title}
-                </h4>
+                <div className="h-1 w-0 bg-[#FFDD80] group-hover:w-16 transition-all duration-700 mb-8 shrink-0"></div>
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="text-[#FFDD80] group-hover:scale-110 transition-transform duration-300">
+                    {l.icon}
+                  </div>
+                  <h4 className="text-base sm:text-lg md:text-xl font-antonio uppercase tracking-wider group-hover:text-[#FFDD80] transition-colors leading-tight break-words flex items-center">
+                    {l.title}
+                  </h4>
+                </div>
                 <p className="text-sm md:text-base text-white/60 leading-relaxed font-light mt-auto">
                   {l.text}
                 </p>
               </div>
             ))}
+          </div>
+
+          {/* CTA */}
+          <div className="mt-16 md:mt-24 text-center">
+            <a 
+              href="#kontakt" 
+              className="inline-block bg-[#FFDD80] text-[#003324] px-10 md:px-14 py-4 md:py-5 rounded-full font-antonio uppercase tracking-[0.2em] text-sm md:text-base font-bold hover:bg-[#A87B00] hover:text-white hover:scale-[1.02] transition-all duration-300 shadow-xl"
+            >
+              Unsere Leistungen anfragen
+            </a>
           </div>
         </div>
       </section>
@@ -281,10 +475,112 @@ function App() {
               </div>
             ))}
           </div>
+
+          {/* CTA */}
+          <div className="mt-16 md:mt-24 text-center">
+            <a 
+              href="#kontakt" 
+              className="inline-block bg-[#003324] text-white px-10 md:px-14 py-4 md:py-5 rounded-full font-antonio uppercase tracking-[0.2em] text-sm md:text-base font-bold hover:bg-[#A87B00] hover:scale-[1.02] transition-all duration-300 shadow-xl"
+            >
+              Referenzen ansehen & Projekt starten
+            </a>
+          </div>
         </div>
       </section>
 
-      {/* 7. ÜBER JUMA */}
+      {/* JUMA Divider - Zwischen Referenzen und Prozess */}
+      <div className="py-12 md:py-16 bg-[#FFFFF0]">
+        <div className="container mx-auto px-6">
+          <img 
+            src="/images/Juma_divider.webp" 
+            alt="JUMA Divider" 
+            className="w-full h-auto max-h-24 md:max-h-32 object-contain"
+          />
+        </div>
+      </div>
+
+      {/* 7. PROZESS */}
+      <section id="prozess" className="py-24 md:py-40 bg-[#FFFFF0]">
+        <div className="container mx-auto px-6 md:px-10">
+          <div className="max-w-5xl mx-auto mb-16 md:mb-24">
+            <h2 className="font-poiret text-4xl sm:text-5xl md:text-7xl lg:text-8xl tracking-tighter text-[#003324] mb-10">
+              Von der Vision <br />
+              <span className="text-[#A87B00] italic">zur Realität.</span>
+            </h2>
+            <p className="text-base sm:text-lg md:text-xl text-[#003324]/80 leading-relaxed font-light max-w-3xl">
+              Unser bewährter Prozess führt Sie Schritt für Schritt zu Ihrem individuellen Lichtkonzept.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+            {[
+              { 
+                title: "Beratung & Konzept", 
+                text: "Wir analysieren Ihre Anforderungen und entwickeln gemeinsam ein maßgeschneidertes Lichtkonzept für Ihr Projekt.",
+                icon: (
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    <path d="M13 8H3"/>
+                    <path d="M17 12H3"/>
+                  </svg>
+                )
+              },
+              { 
+                title: "Design & Planung", 
+                text: "Unsere Experten erstellen detaillierte Entwürfe, Renderings und technische Zeichnungen für Ihre Leuchten.",
+                icon: (
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                    <path d="M2 17l10 5 10-5"/>
+                    <path d="M2 12l10 5 10-5"/>
+                  </svg>
+                )
+              },
+              { 
+                title: "Fertigung", 
+                text: "Jede Leuchte wird in unserer Wiener Manufaktur mit höchster Präzision und handwerklicher Perfektion gefertigt.",
+                icon: (
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                  </svg>
+                )
+              },
+              { 
+                title: "Montage & Service", 
+                text: "Wir übernehmen die fachgerechte Montage und stehen Ihnen auch nach der Installation mit Service zur Seite.",
+                icon: (
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                  </svg>
+                )
+              }
+            ].map((process, i) => (
+              <div key={i} className="bg-white/50 backdrop-blur-xl border border-white/60 p-8 md:p-10 rounded-[2.5rem] md:rounded-[3rem] shadow-xl hover:translate-y-[-10px] transition-all duration-500 flex flex-col">
+                <div className="w-16 h-16 bg-[#003324] rounded-full flex items-center justify-center text-white mb-6 shadow-lg group-hover:scale-110 transition-transform">
+                  <div className="text-white">
+                    {process.icon}
+                  </div>
+                </div>
+                <h3 className="text-xl font-antonio uppercase tracking-wider mb-4 text-[#003324]">{process.title}</h3>
+                <p className="text-sm md:text-base text-[#003324]/70 leading-relaxed">{process.text}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* CTA */}
+          <div className="mt-16 md:mt-24 text-center">
+            <a 
+              href="#kontakt" 
+              className="inline-block bg-[#003324] text-white px-10 md:px-14 py-4 md:py-5 rounded-full font-antonio uppercase tracking-[0.2em] text-sm md:text-base font-bold hover:bg-[#003324]/90 hover:scale-[1.02] transition-all duration-300 shadow-xl"
+            >
+              Kostenlose Erstberatung anfragen
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* 8. ÜBER JUMA */}
       <section id="ueber-juma" className="py-24 md:py-40 bg-[#F5F2ED] overflow-hidden">
         <div className="container mx-auto px-6 md:px-10">
           <div className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-center">
@@ -297,14 +593,30 @@ function App() {
               <p className="text-lg sm:text-xl text-[#003324]/80 leading-relaxed font-light max-w-lg">
                 JUMA Leuchten ist ein Wiener Familienunternehmen, das die Kunst der Leuchtenherstellung seit drei Generationen pflegt.
               </p>
-              <div className="pt-10 border-t border-[#003324]/10">
-                <img src="/assets/brand/Combination mark.webp" alt="JUMA Combination Mark" className="h-16 sm:h-20 object-contain grayscale opacity-50" />
+              <div className="pt-6">
+                <a 
+                  href="#kontakt" 
+                  className="inline-block bg-[#003324] text-white px-8 md:px-10 py-3 md:py-4 rounded-full font-antonio uppercase tracking-[0.2em] text-sm md:text-base font-bold hover:bg-[#A87B00] hover:scale-[1.02] transition-all duration-300 shadow-lg"
+                >
+                  Lernen Sie uns kennen
+                </a>
               </div>
             </div>
             
             <div className="grid grid-cols-2 gap-4 sm:gap-6 relative">
-              <div className="rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl translate-y-8 sm:translate-y-12">
-                <img src="/images/Mohammad Juma_optimized.webp" alt="Mohammad Juma" className="w-full h-full object-cover" />
+              <div className="flex flex-col">
+                {/* JUMA Monogram über dem linken Foto */}
+                <div className="mb-4 flex justify-center">
+                  <img 
+                    src="/assets/brand/Monogram.webp" 
+                    alt="JUMA Monogram" 
+                    className="h-12 sm:h-16 md:h-20 object-contain"
+                    style={{ filter: 'brightness(0) saturate(100%) invert(12%) sepia(34%) saturate(1204%) hue-rotate(116deg) brightness(95%) contrast(101%)' }}
+                  />
+                </div>
+                <div className="rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl translate-y-8 sm:translate-y-12">
+                  <img src="/images/Mohammad Juma_optimized.webp" alt="Mohammad Juma" className="w-full h-full object-cover" />
+                </div>
               </div>
               <div className="rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl">
                 <img src="/images/Altes Geschäft.webp" alt="Juma Historisches Geschäft" className="w-full h-full object-cover" />
@@ -314,7 +626,97 @@ function App() {
         </div>
       </section>
 
-      {/* 8. KONTAKT */}
+      {/* 9. FAQ */}
+      <section id="faq" className="py-24 md:py-40 bg-[#FFFFF0]">
+        <div className="container mx-auto px-6 md:px-10">
+          <div className="max-w-4xl mx-auto">
+            <div className="mb-16 md:mb-24">
+              <h2 className="font-poiret text-4xl sm:text-5xl md:text-7xl lg:text-8xl tracking-tighter text-[#003324] mb-10">
+                Häufige Fragen
+              </h2>
+              <p className="text-base sm:text-lg md:text-xl text-[#003324]/80 leading-relaxed font-light">
+                Antworten auf die wichtigsten Fragen zu unseren Leistungen und Ihrem Projekt.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {[
+                {
+                  question: "Wie lange dauert die Fertigung einer individuellen Leuchte?",
+                  answer: "Die Fertigungszeit hängt von der Komplexität und dem Umfang Ihres Projekts ab. In der Regel beträgt die Produktionszeit 8-12 Wochen nach Freigabe der finalen Entwürfe. Für dringende Projekte können wir auch Express-Lösungen anbieten."
+                },
+                {
+                  question: "Können Sie auch bestehende Leuchten restaurieren oder modernisieren?",
+                  answer: "Ja, wir bieten sowohl denkmalgerechte Restauration als auch LED-Modernisierung bestehender Leuchten an. Unsere Experten analysieren den Zustand und erstellen ein individuelles Konzept für die Instandsetzung oder Modernisierung."
+                },
+                {
+                  question: "Welche Mindestbestellmenge gilt für Sonderanfertigungen?",
+                  answer: "Wir fertigen auch Einzelstücke an. Es gibt keine Mindestbestellmenge. Unser Fokus liegt auf maßgeschneiderten Lösungen, unabhängig von der Stückzahl. Jede Leuchte wird individuell für Ihr Projekt gefertigt."
+                },
+                {
+                  question: "Bieten Sie auch Montage und Installation an?",
+                  answer: "Ja, wir übernehmen die komplette Projektabwicklung inklusive fachgerechter Montage. Unser Team koordiniert die Installation weltweit und stellt sicher, dass jede Leuchte perfekt in Ihr Ambiente integriert wird."
+                },
+                {
+                  question: "Wie funktioniert die Zusammenarbeit bei internationalen Projekten?",
+                  answer: "Wir haben langjährige Erfahrung mit internationalen Projekten. Von der ersten Beratung über die Fertigung bis zur Montage koordinieren wir alles zentral. Wir arbeiten mit zuverlässigen Partnern zusammen und stellen eine reibungslose Abwicklung sicher."
+                },
+                {
+                  question: "Können Sie Leuchten nach unseren eigenen Entwürfen fertigen?",
+                  answer: "Absolut. Wir fertigen Leuchten nach Ihren individuellen Entwürfen und Spezifikationen. Unsere Experten prüfen die Machbarkeit, optimieren technische Details und realisieren Ihre Vision in höchster Qualität."
+                }
+              ].map((faq, index) => (
+                <div 
+                  key={index}
+                  className="bg-white/50 backdrop-blur-xl border border-white/60 rounded-2xl md:rounded-3xl overflow-hidden shadow-lg transition-all duration-300"
+                >
+                  <button
+                    onClick={() => toggleFaq(index)}
+                    className="w-full p-6 md:p-8 text-left flex justify-between items-center hover:bg-white/30 transition-colors"
+                  >
+                    <h3 className="text-lg md:text-xl font-antonio uppercase tracking-wider text-[#003324] pr-8">
+                      {faq.question}
+                    </h3>
+                    <div className={`flex-shrink-0 w-8 h-8 rounded-full bg-[#A87B00] flex items-center justify-center transition-transform duration-300 ${openFaqIndex === index ? 'rotate-180' : ''}`}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                        <path d="M6 9l6 6 6-6"/>
+                      </svg>
+                    </div>
+                  </button>
+                  <div className={`overflow-hidden transition-all duration-500 ${openFaqIndex === index ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <div className="p-6 md:p-8 pt-0 text-[#003324]/70 leading-relaxed font-light">
+                      {faq.answer}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* CTA */}
+            <div className="mt-16 md:mt-24 text-center">
+              <a 
+                href="#kontakt" 
+                className="inline-block bg-[#A87B00] text-white px-10 md:px-14 py-4 md:py-5 rounded-full font-antonio uppercase tracking-[0.2em] text-sm md:text-base font-bold hover:bg-[#003324] hover:scale-[1.02] transition-all duration-300 shadow-xl"
+              >
+                Noch Fragen? Kontaktieren Sie uns
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* JUMA Divider - Zwischen FAQ und Kontakt */}
+      <div className="py-12 md:py-16 bg-[#FFFFF0]">
+        <div className="container mx-auto px-6">
+          <img 
+            src="/images/Juma_divider.webp" 
+            alt="JUMA Divider" 
+            className="w-full h-auto max-h-24 md:max-h-32 object-contain"
+          />
+        </div>
+      </div>
+
+      {/* 10. KONTAKT */}
       <section id="kontakt" className="py-24 md:py-40 bg-[#FFFFF0]">
         <div className="container mx-auto px-6 md:px-10">
           <div className="max-w-6xl mx-auto bg-[#003324] rounded-[3rem] md:rounded-[6rem] overflow-hidden shadow-2xl flex flex-col lg:flex-row">
@@ -328,12 +730,59 @@ function App() {
               </p>
             </div>
             
-            <div className="lg:w-1/2 bg-white/5 backdrop-blur-xl p-10 sm:p-12 md:p-20 border-l border-white/10">
+            <div className="lg:w-1/2 bg-transparent p-10 sm:p-12 md:p-20">
               <form className="space-y-6 sm:space-y-8">
-                <input type="text" placeholder="Firma" className="w-full bg-transparent border-b border-white/20 py-4 outline-none focus:border-[#FFDD80] text-white placeholder:text-white/30" />
-                <input type="text" placeholder="Name" className="w-full bg-transparent border-b border-white/20 py-4 outline-none focus:border-[#FFDD80] text-white placeholder:text-white/30" />
-                <input type="email" placeholder="E-Mail" className="w-full bg-transparent border-b border-white/20 py-4 outline-none focus:border-[#FFDD80] text-white placeholder:text-white/30" />
-                <button className="w-full bg-[#A87B00] text-white py-5 sm:py-6 rounded-full font-antonio uppercase tracking-[0.3em] text-lg sm:text-xl hover:bg-white hover:text-[#003324] transition-all">
+                <div>
+                  <label className="block text-white/80 text-xs uppercase tracking-wider mb-2 font-antonio">Firma</label>
+                  <input 
+                    type="text" 
+                    name="firma"
+                    placeholder="Ihre Firma" 
+                    className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 outline-none focus:border-[#FFDD80] focus:bg-white/20 text-white placeholder:text-white/30 transition-all" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/80 text-xs uppercase tracking-wider mb-2 font-antonio">Ansprechpartner</label>
+                  <input 
+                    type="text" 
+                    name="ansprechpartner"
+                    placeholder="Ihr Name" 
+                    className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 outline-none focus:border-[#FFDD80] focus:bg-white/20 text-white placeholder:text-white/30 transition-all" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/80 text-xs uppercase tracking-wider mb-2 font-antonio">E-Mail</label>
+                  <input 
+                    type="email" 
+                    name="email"
+                    placeholder="ihre.email@beispiel.de" 
+                    className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 outline-none focus:border-[#FFDD80] focus:bg-white/20 text-white placeholder:text-white/30 transition-all" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/80 text-xs uppercase tracking-wider mb-2 font-antonio">Telefon</label>
+                  <input 
+                    type="tel" 
+                    name="telefon"
+                    placeholder="+43 123 456 789" 
+                    className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 outline-none focus:border-[#FFDD80] focus:bg-white/20 text-white placeholder:text-white/30 transition-all" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/80 text-xs uppercase tracking-wider mb-2 font-antonio">
+                    Projektbeschreibung <span className="text-white/50 normal-case">(optional)</span>
+                  </label>
+                  <textarea 
+                    name="projektbeschreibung"
+                    rows={4}
+                    placeholder="Beschreiben Sie Ihr Projekt..." 
+                    className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 outline-none focus:border-[#FFDD80] focus:bg-white/20 text-white placeholder:text-white/30 transition-all resize-y" 
+                  />
+                </div>
+                <button 
+                  type="submit"
+                  className="w-full bg-[#A87B00] text-white py-5 sm:py-6 rounded-full font-antonio uppercase tracking-[0.3em] text-lg sm:text-xl hover:bg-white hover:text-[#003324] transition-all shadow-lg"
+                >
                   Anfrage senden
                 </button>
               </form>
@@ -342,7 +791,7 @@ function App() {
         </div>
       </section>
 
-      {/* 9. Footer */}
+      {/* 11. Footer */}
       <footer className="py-16 bg-[#FFFFF0] border-t border-[#003324]/5">
         <div className="container mx-auto px-6 md:px-10 flex flex-col md:flex-row justify-between items-center text-[10px] tracking-[0.3em] uppercase opacity-40 font-bold text-[#003324]">
           <div className="text-center md:text-left mb-8 md:mb-0">© 2026 JUMA Manufacturing Vienna. <br className="md:hidden" /> Handgefertigt seit 1967.</div>
